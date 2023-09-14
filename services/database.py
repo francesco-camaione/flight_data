@@ -1,5 +1,9 @@
 import psycopg2
 from decouple import config
+from typing import List, Tuple
+from model.db_tables import OneWayFlights
+from model.flight import Flight
+from services.web_scraper import WebScraper
 
 
 class Database:
@@ -22,14 +26,28 @@ class Database:
                 port=self.port
             )
             self.cursor = self.conn.cursor()
-            print("Connected")
+            print("Connected to db")
         except psycopg2.Error as e:
             print("Error connecting:  ", e)
 
-    def execute_query(self, q: str):
+    def execute_query(self, q):
+        self.connect()
         try:
+            # use parameretized queries
             self.cursor.execute(q)
             return self.cursor.fetchall()
+        except psycopg2.Error as e:
+            print("Error during query execution: ", e)
+            return None
+
+    def execute_parameretized_query(self, q: str, parameters):
+        self.connect()
+        try:
+            # use parameretized queries
+            print("param: ", parameters)
+            self.cursor.execute(q, parameters)
+            self.conn.commit()
+            return
         except psycopg2.Error as e:
             print("Error during query execution: ", e)
             return None
@@ -41,17 +59,40 @@ class Database:
             self.conn.close()
             print("Connection closed")
 
+    def get_one_way_flights(self):
+        q = "SELECT * FROM OneWayFlights;"
+        res: List[Tuple[OneWayFlights]] = self.execute_query(q)
+        self.close()
+        return res
+
+    def insert_one_way_flights(self, flights_data: List[Flight]):
+        for flight in flights_data:
+            q = "INSERT INTO OneWayFlights (flightid, departure_station, arrival_station, departure_time, " \
+                "arrival_time, duration_time, price, direct_flight) VALUES ( %s, %s, %s, %s, %s, %s, %s, %s) " \
+                "ON CONFLICT (flightid) DO NOTHING;"
+
+            parameters = (
+                flight.flight_id,
+                flight.departure_station,
+                flight.arrival_station,
+                flight.departure_time,
+                flight.arrival_time,
+                flight.duration_time,
+                flight.price,
+                flight.direct_flight
+            )
+            self.execute_parameretized_query(q, parameters)
+
 
 if __name__ == "__main__":
     db = Database()
-    db.connect()
+    flights = WebScraper(
+        "ROM",
+        "LIS",
+        "2024-03-01",
+        100,
+        0
+    ).list_of_flights()
 
-    query = "SELECT * FROM prova"
-    results = db.execute_query(query)
-
-    if results:
-        for row in results:
-            print(row)
-
-    db.close()
-
+    db.insert_one_way_flights(flights)
+    print(db.get_one_way_flights())

@@ -2,12 +2,13 @@ import multiprocessing
 from time import sleep
 from selenium import webdriver
 from selenium.common.exceptions import WebDriverException
-from bs4 import BeautifulSoup, NavigableString
+from bs4 import BeautifulSoup
 import re
 from datetime import datetime, timedelta
 from typing import List
 from selenium.webdriver.remote.webelement import WebElement
 from model.flight import Flight
+from lib import utils
 
 
 class WebScraper:
@@ -62,7 +63,7 @@ class WebScraper:
         input_data = datetime.strptime(self.when, '%Y-%m-%d')
         # Print the next 7 days including the choosen day
         days = [input_data.strftime('%Y-%m-%d')]
-        for i in range(7):
+        for i in range(1):
             input_data += timedelta(days=1)
             days.append(input_data.strftime('%Y-%m-%d'))
         return days
@@ -96,19 +97,22 @@ class WebScraper:
             duration = self.get_duration_time(duration_div)
             price = self.delete_pound_sign(price_div.text)
             is_direct = self.is_flight_directed()
+            flight_id = utils.remove_spaces_and_digits(
+                f"{departure}{arrival}{self.when}{departure_time}{arrival_time}{duration}{price}")
             res.append(
                 {
-                    "url": url,
+                    "flight_id": flight_id,
                     "departure": departure,
                     "arrival": arrival,
                     "departure_time": departure_time,
                     "arrival_time": arrival_time,
                     "duration": duration,
-                    "price": price,
+                    "price": utils.pounds_to_euros(price),
                     "is_direct": is_direct,
+                    "when": self.when
                 }
             )
-        return res
+            return res
 
     def scrape_data(self, url, max_retries=2):
         if self.retry_count <= max_retries:
@@ -117,7 +121,7 @@ class WebScraper:
 
                 driver = webdriver.Chrome()
                 driver.get(url)
-                sleep(4)
+                sleep(6)
                 driver.find_element("xpath", popup_window_button).click()
 
                 # scrape data by finding elements using XPath
@@ -155,180 +159,41 @@ class WebScraper:
         # Close the pool of worker processes
         pool.close()
         pool.join()
-
+        print("res: ", results)
         return results
 
     @staticmethod
     def flight_objects(results):
         return [Flight(*flight_dict.values()) for day_elements in results
-                for flight_dict in day_elements if day_elements is not None]
+                for flight_dict in day_elements if flight_dict is not None]
 
     def list_of_flights(self):
-        # results = self.requests_data()
-
+        results = self.requests_data()
         # testing_data
-        results = [
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-03?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='14:30',
-                   arrival_time='17:05', duration_time='2h 35m', price=90, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-03?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='08:30',
-                   arrival_time='11:05', duration_time='2h 35m', price=90, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-03?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='17:15',
-                   arrival_time='19:50', duration_time='2h 35m', price=135, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-03?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='12:45',
-                   arrival_time='15:20', duration_time='2h 35m', price=135, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-03?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='06:10',
-                   arrival_time='08:45', duration_time='2h 35m', price=135, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-04?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='14:30',
-                   arrival_time='17:05', duration_time='2h 35m', price=87, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-04?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='14:30',
-                   arrival_time='17:05', duration_time='2h 35m', price=87, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-04?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='08:30',
-                   arrival_time='11:05', duration_time='2h 35m', price=87, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-04?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='21:00',
-                   arrival_time='23:25', duration_time='2h 25m', price=135, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-04?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='06:10',
-                   arrival_time='08:45', duration_time='2h 35m', price=135, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-04?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='17:15',
-                   arrival_time='19:50', duration_time='2h 35m', price=222, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-04?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='12:45',
-                   arrival_time='15:20', duration_time='2h 35m', price=289, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-05?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='14:30',
-                   arrival_time='17:05', duration_time='2h 35m', price=84, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-05?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='14:30',
-                   arrival_time='17:05', duration_time='2h 35m', price=84, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-05?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='08:30',
-                   arrival_time='11:05', duration_time='2h 35m', price=84, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-05?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='21:00',
-                   arrival_time='23:25', duration_time='2h 25m', price=135, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-05?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='06:10',
-                   arrival_time='08:45', duration_time='2h 35m', price=160, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-05?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='17:15',
-                   arrival_time='19:50', duration_time='2h 35m', price=188, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-05?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='12:45',
-                   arrival_time='15:20', duration_time='2h 35m', price=261, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-06?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='14:30',
-                   arrival_time='17:05', duration_time='2h 35m', price=90, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-06?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='08:30',
-                   arrival_time='11:05', duration_time='2h 35m', price=90, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-06?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='21:00',
-                   arrival_time='23:25', duration_time='2h 25m', price=135, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-06?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='17:15',
-                   arrival_time='19:50', duration_time='2h 35m', price=135, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-06?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='12:45',
-                   arrival_time='15:20', duration_time='2h 35m', price=135, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-06?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='06:10',
-                   arrival_time='08:45', duration_time='2h 35m', price=135, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-07?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='14:30',
-                   arrival_time='17:05', duration_time='2h 35m', price=87, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-07?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='14:30',
-                   arrival_time='17:05', duration_time='2h 35m', price=78, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-07?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='08:30',
-                   arrival_time='11:05', duration_time='2h 35m', price=78, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-07?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='21:00',
-                   arrival_time='23:25', duration_time='2h 25m', price=135, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-07?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='17:15',
-                   arrival_time='19:50', duration_time='2h 35m', price=135, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-07?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='12:45',
-                   arrival_time='15:20', duration_time='2h 35m', price=135, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-07?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='06:10',
-                   arrival_time='08:45', duration_time='2h 35m', price=135, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-08?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='14:30',
-                   arrival_time='17:05', duration_time='2h 35m', price=90, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-08?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='08:30',
-                   arrival_time='11:05', duration_time='2h 35m', price=90, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-08?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='21:00',
-                   arrival_time='23:25', duration_time='2h 25m', price=135, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-08?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='17:15',
-                   arrival_time='19:50', duration_time='2h 35m', price=135, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-08?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='12:45',
-                   arrival_time='15:20', duration_time='2h 35m', price=135, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-08?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='06:10',
-                   arrival_time='08:45', duration_time='2h 35m', price=135, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-09?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='14:30',
-                   arrival_time='17:05', duration_time='2h 35m', price=90, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-09?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='08:30',
-                   arrival_time='11:05', duration_time='2h 35m', price=90, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-09?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='21:00',
-                   arrival_time='23:25', duration_time='2h 25m', price=135, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-09?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='17:15',
-                   arrival_time='19:50', duration_time='2h 35m', price=135, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-09?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='12:45',
-                   arrival_time='15:20', duration_time='2h 35m', price=135, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-09?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='06:10',
-                   arrival_time='08:45', duration_time='2h 35m', price=135, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-10?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='14:30',
-                   arrival_time='17:05', duration_time='2h 35m', price=84, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-10?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='14:30',
-                   arrival_time='17:05', duration_time='2h 35m', price=84, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-10?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='08:30',
-                   arrival_time='11:05', duration_time='2h 35m', price=84, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-10?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='06:10',
-                   arrival_time='08:45', duration_time='2h 35m', price=135, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-10?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='17:15',
-                   arrival_time='19:50', duration_time='2h 35m', price=135, direct_flight=True),
-            Flight(url='https://www.kayak.co.uk/flights/ROM-AMS/2024-02-10?fs=price=-450;stops=0&sort=bestflight_a',
-                   departure_station='FCO Fiumicino', arrival_station='AMS Schiphol', departure_time='12:45',
-                   arrival_time='15:20', duration_time='2h 35m', price=135, direct_flight=True)]
+        # results = [Flight(flight_id='FCOFiumicinoAMSSchiphol20240203143017052h35m88', departure_station='FCO Fiumicino',
+        #                   arrival_station='AMS Schiphol', departure_time='14:30', arrival_time='17:05',
+        #                   duration_time='2h 35m', price=102, direct_flight=True, when='2024-02-03'),
+        #            Flight(flight_id='FCOFiumicinoAMSSchiphol20240203143017052h35m88', departure_station='FCO Fiumicino',
+        #                   arrival_station='AMS Schiphol', departure_time='14:30', arrival_time='17:05',
+        #                   duration_time='2h 35m', price=102, direct_flight=True, when='2024-02-03'),
+        #            Flight(flight_id='FCOFiumicinoAMSSchiphol20240203143017052h35m84', departure_station='FCO Fiumicino',
+        #                   arrival_station='AMS Schiphol', departure_time='14:30', arrival_time='17:05',
+        #                   duration_time='2h 35m', price=97, direct_flight=True, when='2024-02-03'),
+        #            Flight(flight_id='FCOFiumicinoAMSSchiphol20240203083011052h35m92', departure_station='FCO Fiumicino',
+        #                   arrival_station='AMS Schiphol', departure_time='08:30', arrival_time='11:05',
+        #                   duration_time='2h 35m', price=106, direct_flight=True, when='2024-02-03')]
 
         flight_objects = self.flight_objects(results)
 
         return flight_objects
 
 
-if __name__ == "__main__":
-    print(WebScraper(
-        "ROM",
-        "AMS",
-        "2024-02-03",
-        200,
-        0
-    ).list_of_flights())
+# if __name__ == "__main__":
+#     flights = WebScraper(
+#         "ROM",
+#         "LIS",
+#         "2024-02-03",
+#         200,
+#         0
+#     ).list_of_flights()
+#     print(flights)
