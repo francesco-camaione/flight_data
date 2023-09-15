@@ -44,7 +44,6 @@ class Database:
         self.connect()
         try:
             # use parameretized queries
-            print("param: ", parameters)
             self.cursor.execute(q, parameters)
             self.conn.commit()
             return
@@ -59,40 +58,43 @@ class Database:
             self.conn.close()
             print("Connection closed")
 
-    def get_one_way_flights(self):
+    def select_one_way_flights(self):
         q = "SELECT * FROM OneWayFlights;"
         res: List[Tuple[OneWayFlights]] = self.execute_query(q)
         self.close()
         return res
 
     def insert_one_way_flights(self, flights_data: List[Flight]):
-        for flight in flights_data:
-            q = "INSERT INTO OneWayFlights (flightid, departure_station, arrival_station, departure_time, " \
-                "arrival_time, duration_time, price, direct_flight) VALUES ( %s, %s, %s, %s, %s, %s, %s, %s) " \
-                "ON CONFLICT (flightid) DO NOTHING;"
+        if flights_data is not None:
+            for flight in flights_data:
+                print(flight)
+                q = "INSERT INTO OneWayFlights (flightid, departure_station, arrival_station, departure_time, "\
+                    "arrival_time, duration_time, price, direct_flight, date) VALUES ( %s, %s, %s, %s, %s, %s, %s, %s,"\
+                    " %s) ON CONFLICT (flightid) DO NOTHING;"
+                parameters = (
+                    flight.flight_id,
+                    flight.departure_station,
+                    flight.arrival_station,
+                    flight.departure_time,
+                    flight.arrival_time,
+                    flight.duration_time,
+                    flight.price,
+                    flight.direct_flight,
+                    flight.when
+                )
+                self.execute_parameretized_query(q, parameters)
 
-            parameters = (
-                flight.flight_id,
-                flight.departure_station,
-                flight.arrival_station,
-                flight.departure_time,
-                flight.arrival_time,
-                flight.duration_time,
-                flight.price,
-                flight.direct_flight
-            )
-            self.execute_parameretized_query(q, parameters)
-
-
-if __name__ == "__main__":
-    db = Database()
-    flights = WebScraper(
-        "ROM",
-        "LIS",
-        "2024-03-01",
-        100,
-        0
-    ).list_of_flights()
-
-    db.insert_one_way_flights(flights)
-    print(db.get_one_way_flights())
+#
+# if __name__ == "__main__":
+#     db = Database()
+#     # scrape and add data to db
+#     flights = WebScraper(
+#         "ROM",
+#         "LIS",
+#         "2024-03-01",
+#         100,
+#         0
+#     ).one_way_flights()
+#
+#     db.insert_one_way_flights(flights)
+#     print(db.get_one_way_flights())

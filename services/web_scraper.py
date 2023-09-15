@@ -63,20 +63,28 @@ class WebScraper:
         input_data = datetime.strptime(self.when, '%Y-%m-%d')
         # Print the next 7 days including the choosen day
         days = [input_data.strftime('%Y-%m-%d')]
-        for i in range(1):
+        for i in range(7):
             input_data += timedelta(days=1)
             days.append(input_data.strftime('%Y-%m-%d'))
         return days
 
-    def compute_urls(self) -> List[str]:
+    def compute_urls(self, days, is_return=False) -> List[str]:
         urls = []
-        for day in self.list_of_days():
-            url = (f"https://www.kayak.co.uk/flights/{self.departure_station}-{self.arrival_station}"
-                   f"/{day}?fs=price=-{self.budget};stops={self.stops}&sort=bestflight_a")
-            urls.append(url)
+        if is_return:
+            return_start_date = datetime.strptime(days[0], '%Y-%m-%d')
+            return_days = [(return_start_date + timedelta(days=i)).strftime('%Y-%m-%d') for i in range(3, 11)]
+            for day in return_days:
+                url = (f"https://www.kayak.co.uk/flights/{self.arrival_station}-{self.departure_station}"
+                       f"/when={day}?fs=price=-{self.budget};stops={self.stops}&sort=bestflight_a")
+                urls.append(url)
+        else:
+            for day in days:
+                url = (f"https://www.kayak.co.uk/flights/{self.departure_station}-{self.arrival_station}"
+                       f"/when={day}?fs=price=-{self.budget};stops={self.stops}&sort=bestflight_a")
+                urls.append(url)
         return urls
 
-    def parse_flight_web_elements(self, elements: list[WebElement], url: str):
+    def parse_flight_web_elements(self, elements: list[WebElement], date: str):
         stations_pattern = re.compile(r'.*-mod-variant-full-airport-wide')
         duration_pattern = re.compile(r'.*-mod-full-airport')
         time_pattern = re.compile(r'.*-mod-variant-large')
@@ -98,7 +106,7 @@ class WebScraper:
             price = self.delete_pound_sign(price_div.text)
             is_direct = self.is_flight_directed()
             flight_id = utils.remove_spaces_and_digits(
-                f"{departure}{arrival}{self.when}{departure_time}{arrival_time}{duration}{price}")
+                f"{departure}{arrival}{date}{departure_time}{arrival_time}{duration}{price}")
             res.append(
                 {
                     "flight_id": flight_id,
@@ -109,7 +117,7 @@ class WebScraper:
                     "duration": duration,
                     "price": utils.pounds_to_euros(price),
                     "is_direct": is_direct,
-                    "when": self.when
+                    "when": date
                 }
             )
             return res
@@ -121,13 +129,13 @@ class WebScraper:
 
                 driver = webdriver.Chrome()
                 driver.get(url)
-                sleep(6)
+                sleep(5)
                 driver.find_element("xpath", popup_window_button).click()
 
                 # scrape data by finding elements using XPath
                 element = driver.find_elements("xpath", '//div[@data-resultid]')
                 if element is not None:
-                    el = self.parse_flight_web_elements(element, url)
+                    el = self.parse_flight_web_elements(element, utils.extract_date_from_url(url))
                     driver.quit()
                     return el
 
@@ -140,13 +148,13 @@ class WebScraper:
         else:
             print("Number of attempts exceeded")
 
-    def requests_data(self):
+    def requests_data(self, urls: List[str]):
         # Create a pool of worker processes
         num_processes = multiprocessing.cpu_count()  # Use CPU cores - 1
         pool = multiprocessing.Pool(processes=num_processes - 1)
 
         # Use multiprocessing to scrape data from multiple URLs concurrently
-        results = pool.map(self.scrape_data, self.compute_urls())
+        results = pool.map(self.scrape_data, urls)
 
         # results = [self.scrape_data(url) for url in self.compute_urls()]
 
@@ -164,29 +172,35 @@ class WebScraper:
 
     @staticmethod
     def flight_objects(results):
-        return [Flight(*flight_dict.values()) for day_elements in results
-                for flight_dict in day_elements if flight_dict is not None]
+        if results is not None:
+            flights = []
+            for day_elements in results:
+                if day_elements is not None:
+                    for flight_dict in day_elements:
+                        flights.append(Flight(*flight_dict.values()))
+            return flights
+            # return [Flight(*flight_dict.values()) for day_elements in results
+            #         for flight_dict in day_elements]
 
-    def list_of_flights(self):
-        results = self.requests_data()
+    def one_way_flights(self):
+        days = self.list_of_days()
+        results = self.requests_data(self.compute_urls(days))
         # testing_data
-        # results = [Flight(flight_id='FCOFiumicinoAMSSchiphol20240203143017052h35m88', departure_station='FCO Fiumicino',
-        #                   arrival_station='AMS Schiphol', departure_time='14:30', arrival_time='17:05',
-        #                   duration_time='2h 35m', price=102, direct_flight=True, when='2024-02-03'),
-        #            Flight(flight_id='FCOFiumicinoAMSSchiphol20240203143017052h35m88', departure_station='FCO Fiumicino',
-        #                   arrival_station='AMS Schiphol', departure_time='14:30', arrival_time='17:05',
-        #                   duration_time='2h 35m', price=102, direct_flight=True, when='2024-02-03'),
-        #            Flight(flight_id='FCOFiumicinoAMSSchiphol20240203143017052h35m84', departure_station='FCO Fiumicino',
-        #                   arrival_station='AMS Schiphol', departure_time='14:30', arrival_time='17:05',
-        #                   duration_time='2h 35m', price=97, direct_flight=True, when='2024-02-03'),
-        #            Flight(flight_id='FCOFiumicinoAMSSchiphol20240203083011052h35m92', departure_station='FCO Fiumicino',
-        #                   arrival_station='AMS Schiphol', departure_time='08:30', arrival_time='11:05',
-        #                   duration_time='2h 35m', price=106, direct_flight=True, when='2024-02-03')]
-
+        # results = [None, None, None, None, None, None, None, None]
         flight_objects = self.flight_objects(results)
-
         return flight_objects
 
+    def round_trip(self):
+        days = self.list_of_days()
+        outbound_flights_results: List = self.requests_data(self.compute_urls(days))
+        return_flights_results: List = self.requests_data(self.compute_urls(days, is_return=True))
+
+        # testing_data
+        # outbound_flights_results = [None, None, None, None, None, None, None, None]
+
+        outbound_flights_results.extend(return_flights_results)
+        flight_objects = self.flight_objects(outbound_flights_results)
+        return flight_objects
 
 # if __name__ == "__main__":
 #     flights = WebScraper(
@@ -195,5 +209,5 @@ class WebScraper:
 #         "2024-02-03",
 #         200,
 #         0
-#     ).list_of_flights()
+#     ).round_trip()
 #     print(flights)
