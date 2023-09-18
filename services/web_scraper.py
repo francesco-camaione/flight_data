@@ -9,6 +9,7 @@ from typing import List
 from selenium.webdriver.remote.webelement import WebElement
 from model.flight import Flight
 from lib import utils
+from services.database import Database
 
 
 class WebScraper:
@@ -56,9 +57,6 @@ class WebScraper:
         price = price_str.replace("£", "").strip()
         return int(price)
 
-    def is_flight_directed(self) -> bool:
-        return True if self.stops == 0 else False
-
     def list_of_days(self) -> List[str]:
         input_data = datetime.strptime(self.when, '%Y-%m-%d')
         # Print the next 7 days including the choosen day
@@ -104,7 +102,6 @@ class WebScraper:
             departure_time, arrival_time = self.get_departure_and_arrival_time(time_div)
             duration = self.get_duration_time(duration_div)
             price = self.delete_pound_sign(price_div.text)
-            is_direct = self.is_flight_directed()
             flight_id = utils.remove_spaces_and_digits(
                 f"{departure}{arrival}{date}{departure_time}{arrival_time}{duration}{price}")
             res.append(
@@ -116,7 +113,7 @@ class WebScraper:
                     "arrival_time": arrival_time,
                     "duration": duration,
                     "price": utils.pounds_to_euros(price),
-                    "is_direct": is_direct,
+                    "stops": self.stops,
                     "when": date
                 }
             )
@@ -156,9 +153,7 @@ class WebScraper:
         # Use multiprocessing to scrape data from multiple URLs concurrently
         results = pool.map(self.scrape_data, urls)
 
-        # results = [self.scrape_data(url) for url in self.compute_urls()]
-
-        # After the initial scraping retry failed URLs (max 2 times)
+        # After the initial scraping retry failed URLs -> (max 2 times)
         if self.failed_urls and self.retry_count <= 2:
             print("Retrying failed URLs...")
             sleep(3)
@@ -202,12 +197,15 @@ class WebScraper:
         flight_objects = self.flight_objects(outbound_flights_results)
         return flight_objects
 
-# if __name__ == "__main__":
-#     flights = WebScraper(
-#         "ROM",
-#         "LIS",
-#         "2024-02-03",
-#         200,
-#         0
-#     ).round_trip()
-#     print(flights)
+
+if __name__ == "__main__":
+    db = Database()
+    flights = WebScraper(
+        "AMS",
+        "ROM",
+        "2023-09-25",
+        200,
+        0
+    ).round_trip()
+
+    db.insert_flights(flights)

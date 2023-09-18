@@ -3,7 +3,6 @@ from decouple import config
 from typing import List, Tuple
 from model.db_tables import OneWayFlights
 from model.flight import Flight
-from services.web_scraper import WebScraper
 
 
 class Database:
@@ -64,12 +63,12 @@ class Database:
         self.close()
         return res
 
-    def insert_one_way_flights(self, flights_data: List[Flight]):
+    def insert_flights(self, flights_data: List[Flight]):
         if flights_data is not None:
             for flight in flights_data:
                 print(flight)
                 q = "INSERT INTO OneWayFlights (flightid, departure_station, arrival_station, departure_time, "\
-                    "arrival_time, duration_time, price, direct_flight, date) VALUES ( %s, %s, %s, %s, %s, %s, %s, %s,"\
+                    "arrival_time, duration_time, price, stops, date) VALUES ( %s, %s, %s, %s, %s, %s, %s, %s,"\
                     " %s) ON CONFLICT (flightid) DO NOTHING;"
                 parameters = (
                     flight.flight_id,
