@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from forex_python.converter import CurrencyRates
 import re
 
@@ -26,6 +28,12 @@ def extract_date_from_url(url):
         return date
     else:
         return None
+
+
+def week_from_date(date, timed: int):
+    date_obj = datetime.strptime(date, '%Y-%m-%d')
+    next_week = date_obj + timedelta(weeks=timed)
+    return next_week.strftime('%Y-%m-%d')
 
 
 if __name__ == "__main__":

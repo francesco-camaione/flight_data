@@ -83,17 +83,3 @@ class Database:
                 )
                 self.execute_parameretized_query(q, parameters)
 
-#
-# if __name__ == "__main__":
-#     db = Database()
-#     # scrape and add data to db
-#     flights = WebScraper(
-#         "ROM",
-#         "LIS",
-#         "2024-03-01",
-#         100,
-#         0
-#     ).one_way_flights()
-#
-#     db.insert_one_way_flights(flights)
-#     print(db.get_one_way_flights())

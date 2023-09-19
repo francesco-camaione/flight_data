@@ -1,4 +1,5 @@
 import multiprocessing
+import threading
 from time import sleep
 from selenium import webdriver
 from selenium.common.exceptions import WebDriverException
@@ -119,6 +120,11 @@ class WebScraper:
             )
             return res
 
+    @staticmethod
+    def close_window_after_delay(driver, delay):
+        sleep(delay)
+        driver.quit()
+
     def scrape_data(self, url, max_retries=2):
         if self.retry_count <= max_retries:
             try:
@@ -147,11 +153,12 @@ class WebScraper:
 
     def requests_data(self, urls: List[str]):
         # Create a pool of worker processes
-        num_processes = multiprocessing.cpu_count()  # Use CPU cores - 1
-        pool = multiprocessing.Pool(processes=num_processes - 1)
+        num_cores = multiprocessing.cpu_count()  # Use CPU cores - 1
+        pool = multiprocessing.Pool(processes=num_cores - 1)
+
+        results = pool.map(self.scrape_data, urls)
 
         # Use multiprocessing to scrape data from multiple URLs concurrently
-        results = pool.map(self.scrape_data, urls)
 
         # After the initial scraping retry failed URLs -> (max 2 times)
         if self.failed_urls and self.retry_count <= 2:
@@ -201,9 +208,9 @@ class WebScraper:
 if __name__ == "__main__":
     db = Database()
     flights = WebScraper(
-        "AMS",
         "ROM",
-        "2023-09-25",
+        "AMS",
+        "2023-12-20",
         200,
         0
     ).round_trip()
