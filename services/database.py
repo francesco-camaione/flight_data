@@ -1,7 +1,6 @@
 import psycopg2
 from decouple import config
 from typing import List, Tuple
-from model.db_tables import OneWayFlights
 from model.flight import Flight
 
 
@@ -59,7 +58,7 @@ class Database:
 
     def select_one_way_flights(self):
         q = "SELECT * FROM OneWayFlights;"
-        res: List[Tuple[OneWayFlights]] = self.execute_query(q)
+        res: List[Tuple[Flight]] = self.execute_query(q)
         self.close()
         return res
 

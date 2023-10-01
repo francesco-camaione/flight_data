@@ -40,7 +40,7 @@ spark_task = SparkSubmitOperator(
     task_id='call_spark_script',
     conn_id='spark_standalone_conn',
     application=spark_script_path,
-    executor_memory="3g",
+    executor_memory="4g",
     dag=dag
 )
 
