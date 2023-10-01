@@ -1,6 +1,5 @@
 import sys
 sys.path.append('/Users/france.cama/code/flight_data')
-import os
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator

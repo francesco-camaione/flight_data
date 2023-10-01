@@ -1,2 +1,6 @@
 *.env
-
+.idea
+airflow.cfg
+airflow.db
+webserver_config.py
+__pycache__.py
