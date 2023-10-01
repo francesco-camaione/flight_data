@@ -1,5 +1,8 @@
 import sys
-sys.path.append('/Users/france.cama/code/flight_data')
+import os
+current_dir = os.getcwd()
+project_directory = os.path.dirname(current_dir)
+sys.path.append(project_directory)
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
@@ -32,10 +35,11 @@ python_task = PythonOperator(
     dag=dag
 )
 
+spark_script_path = os.path.join(project_directory, "app/spark_script.py")
 spark_task = SparkSubmitOperator(
     task_id='call_spark_script',
     conn_id='spark_standalone_conn',
-    application='/Users/france.cama/code/flight_data/app/spark_script.py',
+    application=spark_script_path,
     executor_memory="3g",
     dag=dag
 )
