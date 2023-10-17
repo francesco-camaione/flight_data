@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-
 from forex_python.converter import CurrencyRates
 import re
 
@@ -37,4 +36,4 @@ def week_from_date(date, timed: int):
 
 
 if __name__ == "__main__":
-    print(pounds_to_euros(84))
+    pass

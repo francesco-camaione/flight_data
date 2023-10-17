@@ -28,14 +28,23 @@ class Database:
         except psycopg2.Error as e:
             print("Error connecting:  ", e)
 
+    def close(self):
+        if self.cursor:
+            self.cursor.close()
+        if self.conn:
+            self.conn.close()
+            print("Connection closed")
+
     def execute_query(self, q):
         self.connect()
         try:
             # use parameretized queries
             self.cursor.execute(q)
+            self.close()
             return self.cursor.fetchall()
         except psycopg2.Error as e:
             print("Error during query execution: ", e)
+            self.close()
             return None
 
     def execute_parameretized_query(self, q: str, parameters):
@@ -44,22 +53,16 @@ class Database:
             # use parameretized queries
             self.cursor.execute(q, parameters)
             self.conn.commit()
+            self.close()
             return
         except psycopg2.Error as e:
             print("Error during query execution: ", e)
+            self.close()
             return None
-
-    def close(self):
-        if self.cursor:
-            self.cursor.close()
-        if self.conn:
-            self.conn.close()
-            print("Connection closed")
 
     def select_one_way_flights(self):
         q = "SELECT * FROM OneWayFlights;"
         res: List[Tuple[Flight]] = self.execute_query(q)
-        self.close()
         return res
 
     def insert_flights(self, flights_data: List[Flight]):

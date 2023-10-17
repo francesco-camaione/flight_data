@@ -1,13 +1,8 @@
 import os
 import sys
-
-# Get the directory of the current script
 current_dir = os.path.dirname(os.path.abspath(__file__))
-
-# Add the project root directory to the Python path
 project_root = os.path.abspath(os.path.join(current_dir, '..'))
 sys.path.append(project_root)
-
 from services.database import Database
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType, StructField, StringType, DateType, IntegerType
@@ -53,7 +48,6 @@ filtered_df.show(5)
 mean_price = df.select(mean("price")).first()[0]
 min_price_of_the_week = filtered_df.select(min("price")).first()[0]
 print("min_price_of_the_week: ", min_price_of_the_week, "mean", mean_price)
-
 
 
 

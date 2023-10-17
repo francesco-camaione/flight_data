@@ -37,7 +37,6 @@ class WebScraper:
 
     @staticmethod
     def get_departure_and_arrival_stations(div_elements) -> tuple[str, str]:
-
         def get_station_name(div):
             spans = div.find_all("span")
             departure_span_1 = spans[1].get_text()
@@ -128,7 +127,6 @@ class WebScraper:
         if self.retry_count <= max_retries:
             try:
                 popup_window_button = "//button[contains(@class, 'Py0r')]"
-
                 driver = webdriver.Chrome()
                 driver.get(url)
                 sleep(5)
@@ -154,21 +152,15 @@ class WebScraper:
         # Create a pool of worker processes
         num_cores = multiprocessing.cpu_count()  # Use CPU cores - 1
         pool = multiprocessing.Pool(processes=num_cores - 1)
-
         results = pool.map(self.scrape_data, urls)
-
-        # Use multiprocessing to scrape data from multiple URLs concurrently
-
         # After the initial scraping retry failed URLs -> (max 2 times)
         if self.failed_urls and self.retry_count <= 2:
             print("Retrying failed URLs...")
             sleep(3)
             results.append([self.scrape_data(url) for url in self.failed_urls])
-
         # Close the pool of worker processes
         pool.close()
         pool.join()
-        print("res: ", results)
         return results
 
     @staticmethod
@@ -195,10 +187,8 @@ class WebScraper:
         days = self.list_of_days()
         outbound_flights_results: List = self.requests_data(self.compute_urls(days))
         return_flights_results: List = self.requests_data(self.compute_urls(days, is_return=True))
-
         # testing_data
         # outbound_flights_results = [None, None, None, None, None, None, None, None]
-
         outbound_flights_results.extend(return_flights_results)
         flight_objects = self.flight_objects(outbound_flights_results)
         return flight_objects
