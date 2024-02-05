@@ -31,6 +31,7 @@ schema = StructType([
 ])
 df = spark.createDataFrame(flights_data, schema=schema)
 
+
 # Define the number of weeks from now
 weeks_from_now = 2
 
@@ -47,7 +48,7 @@ filtered_df.show(5)
 
 mean_price = df.select(mean("price")).first()[0]
 min_price_of_the_week = filtered_df.select(min("price")).first()[0]
-print("min_price_of_the_week: ", min_price_of_the_week, "mean", mean_price)
+print("min_price_of_the_week: ", min_price_of_the_week, "mean: ", mean_price)
 
 
 
