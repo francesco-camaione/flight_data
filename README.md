@@ -14,4 +14,3 @@ Data processing output using PySpark:
 
 Data orchestration using Apache Airflow:
 ![Screenshot 2023-09-19 alle 20.08.42.png](readme_screenshot/s_2.png)
-
