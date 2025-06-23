@@ -6,11 +6,11 @@ from model.flight import Flight
 
 class Database:
     def __init__(self):
-        self.dbname = "find_data"
-        self.user = "postgres"
+        self.dbname = config('DB_NAME')
+        self.user = config("USER")
         self.password = config('DB_PW')
         self.host = "localhost"
-        self.port = "5432"
+        self.port = config('PORT')
         self.conn = None
         self.cursor = None
 

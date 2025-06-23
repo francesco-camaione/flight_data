@@ -48,3 +48,4 @@ spark_task = SparkSubmitOperator(
 python_task >> spark_task
 
 date = next_week_date
+

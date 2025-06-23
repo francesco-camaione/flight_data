@@ -12,3 +12,4 @@ class Flight:
     price: int
     direct_flight: bool
     when: str
+

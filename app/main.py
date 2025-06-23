@@ -15,4 +15,3 @@ def scrape_and_write_flights(origin: str, destination: str, date: str, budget: i
     db.insert_flights(flights)
     return flights
 
-

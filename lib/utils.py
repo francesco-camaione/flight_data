@@ -37,3 +37,4 @@ def week_from_date(date, timed: int):
 
 if __name__ == "__main__":
     pass
+

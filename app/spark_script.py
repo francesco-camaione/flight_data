@@ -51,4 +51,3 @@ min_price_of_the_week = filtered_df.select(min("price")).first()[0]
 print("min_price_of_the_week: ", min_price_of_the_week, "mean: ", mean_price)
 
 
-
