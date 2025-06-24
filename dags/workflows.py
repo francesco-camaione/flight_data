@@ -20,7 +20,7 @@ default_args = {
 dag = DAG(
     'flight_data_workflow',
     default_args=default_args,
-    schedule_interval=timedelta(weeks=1),  # Run every week
+    schedule_interval=timedelta(weeks=1),
     catchup=False
 )
 
